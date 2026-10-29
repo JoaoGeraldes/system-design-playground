@@ -12,12 +12,16 @@
     "preview": "vite preview",
     "test": "node --test \"tests/**/*.test.ts\"",
     "check": "tsc && prettier --check . && npm test",
-    "format": "prettier --write"
+    "format": "prettier --write",
+    "sdp": "node bin/sdp.ts"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vite": "^7.1.5"
+  },
+  "bin": {
+    "sdp": "bin/sdp.ts"
   }
 }

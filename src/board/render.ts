@@ -140,8 +140,7 @@ export function render(
     const selected = isSelected(scene, 'cable', cable.id);
     const curve = cableCurve(cable, scene.flow, scene.time);
     drawCable(ctx, scene.design, cable, curve, selected);
-    // Two-way cables still have a caller, so they get a fainter arrow.
-    drawDirectionArrow(ctx, curve, cable.label, !cable.oneWay);
+    drawDirectionArrows(ctx, curve, cable.label, !cable.oneWay);
   }
   for (const cable of scene.design.cables) drawCableLabel(ctx, cable);
   for (const node of scene.design.nodes) {
@@ -347,19 +346,35 @@ function drawCornerHandles(
   }
 }
 
-/** A chevron showing which way a one-way cable sends its traffic. */
-function drawDirectionArrow(
+/**
+ * Chevrons showing which way a cable sends traffic: one for a one-way cable,
+ * one each way for a two-way cable (requests out, responses back).
+ */
+function drawDirectionArrows(
   ctx: CanvasRenderingContext2D,
   curve: Point[],
   label: string | undefined,
-  faint: boolean,
+  twoWay: boolean,
 ): void {
-  // The middle belongs to the label, so the arrow steps aside for it.
-  const { point, angle } = pointAlong(curve, label ? 0.3 : 0.5);
+  if (!twoWay) {
+    // The middle belongs to the label, so the arrow steps aside for it.
+    drawChevron(ctx, curve, label ? 0.3 : 0.5, false);
+    return;
+  }
+  drawChevron(ctx, curve, 0.35, false);
+  drawChevron(ctx, curve, 0.65, true);
+}
+
+function drawChevron(
+  ctx: CanvasRenderingContext2D,
+  curve: Point[],
+  along: number,
+  backwards: boolean,
+): void {
+  const { point, angle } = pointAlong(curve, along);
   ctx.save();
-  if (faint) ctx.globalAlpha = 0.4;
   ctx.translate(point.x, point.y);
-  ctx.rotate(angle);
+  ctx.rotate(backwards ? angle + Math.PI : angle);
   ctx.beginPath();
   ctx.moveTo(-4, -6);
   ctx.lineTo(4, 0);

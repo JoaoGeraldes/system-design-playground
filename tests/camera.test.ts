@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   fitCamera,
+  frameCamera,
   screenToWorld,
   worldToScreen,
   zoomAt,
@@ -55,4 +56,13 @@ test('world points convert back to the same screen points', () => {
     worldToScreen(camera, screenToWorld(camera, screen)),
     screen,
   );
+});
+
+test('framing makes an image just big enough for the content and a margin', () => {
+  const { camera, width, height } = frameCamera(
+    { left: -100, top: 20, right: 300, bottom: 120 },
+    10,
+  );
+  assert.deepEqual([width, height], [420, 120]);
+  assert.deepEqual(worldToScreen(camera, { x: -100, y: 20 }), { x: 10, y: 10 });
 });

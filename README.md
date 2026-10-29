@@ -23,15 +23,17 @@ npm run check     # types, formatting and tests: run before pushing
 
 ## I want to…
 
-| I want to…                      | Do this                                                                                                         |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Add or change a component       | Edit `src/content/components/<category>/<id>.json`; list new ones in `index.ts` there                           |
-| Add a board                     | Build it in the app, press **Copy board as JSON**, save it in `src/content/templates/`, link it on `index.html` |
-| Change what Fix suggests        | Edit `src/content/fixes.json`                                                                                   |
-| Change the _In a nutshell_ page | Edit `src/content/nutshell.json`                                                                                |
-| Change how busy things get      | `capacity` in a component's JSON, or the rules in `src/simulation/load.ts`                                      |
-| Change the landing page         | `index.html` and `src/landing/`                                                                                 |
-| Publish                         | Push to `main`                                                                                                  |
+| I want to…                                    | Do this                                                                                                         |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Add or change a component                     | Edit `src/content/components/<category>/<id>.json`; list new ones in `index.ts` there                           |
+| Add a board                                   | Build it in the app, press **Copy board as JSON**, save it in `src/content/templates/`, link it on `index.html` |
+| Change which connections get a warning        | Edit `src/content/connectionRules.json`                                                                         |
+| Change what Terraform is made for a component | Edit `src/content/terraform/aws.json` or `railway.json` (add a new platform the same way)                       |
+| Change what Fix suggests                      | Edit `src/content/fixes.json`                                                                                   |
+| Change the _In a nutshell_ page               | Edit `src/content/nutshell.json`                                                                                |
+| Change how busy things get                    | `capacity` in a component's JSON, or the rules in `src/simulation/load.ts`                                      |
+| Change the landing page                       | `index.html` and `src/landing/`                                                                                 |
+| Publish                                       | Push to `main`                                                                                                  |
 
 ## Where things live
 
@@ -48,6 +50,26 @@ npm run check     # types, formatting and tests: run before pushing
 
 Imports run one way: content and model ← simulation ← board and UI. Board
 and UI never import each other.
+
+## Export, import and the command line
+
+The sidebar exports the board as **JSON**, a **PNG** image or **Terraform**
+(AWS or Railway), and imports JSON or `.tf` files. **Tidy up** on the board
+rearranges components so cables cross less. Terraform output is a starting
+point to review, not something to apply untouched; components with no
+equivalent are left as comments.
+
+The same code runs from a terminal (Node 22.18 or newer, run from the repo):
+
+```sh
+npm run sdp -- check board.json [--worst-day]   # exits 1 if the design doesn't work
+npm run sdp -- layout board.json
+npm run sdp -- export-terraform board.json --target aws
+npm run sdp -- import-terraform ./infra
+```
+
+With Docker: `docker build -t system-design . && docker run -p 8080:80 system-design`
+serves the app; `docker build --target cli -t sdp .` makes the command-line tool.
 
 ## How the simulation works
 

@@ -1,0 +1,301 @@
+{
+  "name": "AWS",
+  "alwaysVariables": ["region"],
+  "header": [
+    "terraform {",
+    "  required_providers {",
+    "    aws = {",
+    "      source  = \"hashicorp/aws\"",
+    "      version = \"~> 5.0\"",
+    "    }",
+    "  }",
+    "}",
+    "",
+    "provider \"aws\" {",
+    "  region = var.region",
+    "}"
+  ],
+  "variables": {
+    "region": {
+      "description": "AWS region to deploy into",
+      "default": "us-east-1"
+    },
+    "ami_id": {
+      "description": "Machine image for servers and workers"
+    },
+    "db_password": {
+      "description": "Password for the SQL database",
+      "sensitive": true
+    },
+    "subnet_ids": {
+      "description": "Subnets for the load balancer",
+      "type": "list(string)"
+    },
+    "origin_domain": {
+      "description": "Domain the CDN fetches from"
+    },
+    "domain_name": {
+      "description": "Your domain, for DNS"
+    },
+    "lambda_role_arn": {
+      "description": "IAM role the functions run as"
+    }
+  },
+  "kinds": {
+    "client": {
+      "skip": "Users' browsers and apps: nothing to deploy."
+    },
+    "external-service": {
+      "skip": "A third-party service: nothing to deploy."
+    },
+    "dns": {
+      "variables": ["domain_name"],
+      "block": [
+        "resource \"aws_route53_zone\" \"{id}\" {",
+        "  name = var.domain_name",
+        "}"
+      ]
+    },
+    "cdn": {
+      "variables": ["origin_domain"],
+      "block": [
+        "resource \"aws_cloudfront_distribution\" \"{id}\" {",
+        "  enabled = true",
+        "",
+        "  origin {",
+        "    domain_name = var.origin_domain",
+        "    origin_id   = \"{slug}\"",
+        "    custom_origin_config {",
+        "      http_port              = 80",
+        "      https_port             = 443",
+        "      origin_protocol_policy = \"https-only\"",
+        "      origin_ssl_protocols   = [\"TLSv1.2\"]",
+        "    }",
+        "  }",
+        "",
+        "  default_cache_behavior {",
+        "    target_origin_id       = \"{slug}\"",
+        "    viewer_protocol_policy = \"redirect-to-https\"",
+        "    allowed_methods        = [\"GET\", \"HEAD\"]",
+        "    cached_methods         = [\"GET\", \"HEAD\"]",
+        "    cache_policy_id        = \"658327ea-f89d-4fab-a63d-7e88639e58f6\"",
+        "  }",
+        "",
+        "  restrictions {",
+        "    geo_restriction {",
+        "      restriction_type = \"none\"",
+        "    }",
+        "  }",
+        "",
+        "  viewer_certificate {",
+        "    cloudfront_default_certificate = true",
+        "  }",
+        "}"
+      ]
+    },
+    "load-balancer": {
+      "variables": ["subnet_ids"],
+      "block": [
+        "resource \"aws_lb\" \"{id}\" {",
+        "  name               = \"{slug}\"",
+        "  load_balancer_type = \"application\"",
+        "  subnets            = var.subnet_ids",
+        "}"
+      ]
+    },
+    "api-gateway": {
+      "block": [
+        "resource \"aws_apigatewayv2_api\" \"{id}\" {",
+        "  name          = \"{label}\"",
+        "  protocol_type = \"HTTP\"",
+        "}"
+      ]
+    },
+    "rate-limiter": {
+      "note": "Rate limits on AWS are WAF rate-based rules attached to the load balancer, API gateway or CDN."
+    },
+    "shard-router": {
+      "note": "Routing requests to the right shard happens in your application code, not in infrastructure."
+    },
+    "websocket-gateway": {
+      "block": [
+        "resource \"aws_apigatewayv2_api\" \"{id}\" {",
+        "  name                       = \"{label}\"",
+        "  protocol_type              = \"WEBSOCKET\"",
+        "  route_selection_expression = \"$request.body.action\"",
+        "}"
+      ]
+    },
+    "app-server": {
+      "variables": ["ami_id"],
+      "block": [
+        "resource \"aws_instance\" \"{id}\" {",
+        "  ami           = var.ami_id",
+        "  instance_type = \"t3.small\"",
+        "",
+        "  tags = {",
+        "    Name = \"{label}\"",
+        "  }",
+        "}"
+      ]
+    },
+    "worker": {
+      "variables": ["ami_id"],
+      "block": [
+        "resource \"aws_instance\" \"{id}\" {",
+        "  ami           = var.ami_id",
+        "  instance_type = \"t3.small\"",
+        "",
+        "  tags = {",
+        "    Name = \"{label}\"",
+        "  }",
+        "}"
+      ]
+    },
+    "function": {
+      "variables": ["lambda_role_arn"],
+      "block": [
+        "resource \"aws_lambda_function\" \"{id}\" {",
+        "  function_name = \"{slug}\"",
+        "  role          = var.lambda_role_arn",
+        "  handler       = \"index.handler\"",
+        "  runtime       = \"nodejs20.x\"",
+        "  filename      = \"{slug}.zip\"",
+        "}"
+      ]
+    },
+    "sql-database": {
+      "variables": ["db_password"],
+      "block": [
+        "resource \"aws_db_instance\" \"{id}\" {",
+        "  identifier          = \"{slug}\"",
+        "  engine              = \"postgres\"",
+        "  instance_class      = \"db.t3.medium\"",
+        "  allocated_storage   = 20",
+        "  username            = \"app\"",
+        "  password            = var.db_password",
+        "  skip_final_snapshot = true",
+        "}"
+      ]
+    },
+    "nosql-database": {
+      "block": [
+        "resource \"aws_dynamodb_table\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  billing_mode = \"PAY_PER_REQUEST\"",
+        "  hash_key     = \"id\"",
+        "",
+        "  attribute {",
+        "    name = \"id\"",
+        "    type = \"S\"",
+        "  }",
+        "}"
+      ]
+    },
+    "search-index": {
+      "block": [
+        "resource \"aws_opensearch_domain\" \"{id}\" {",
+        "  domain_name = \"{slug}\"",
+        "",
+        "  cluster_config {",
+        "    instance_type = \"t3.small.search\"",
+        "  }",
+        "",
+        "  ebs_options {",
+        "    ebs_enabled = true",
+        "    volume_size = 10",
+        "  }",
+        "}"
+      ]
+    },
+    "cache": {
+      "block": [
+        "resource \"aws_elasticache_cluster\" \"{id}\" {",
+        "  cluster_id      = \"{slug}\"",
+        "  engine          = \"redis\"",
+        "  node_type       = \"cache.t3.micro\"",
+        "  num_cache_nodes = 1",
+        "}"
+      ]
+    },
+    "object-storage": {
+      "block": [
+        "# Bucket names are global: change this one to something unique.",
+        "resource \"aws_s3_bucket\" \"{id}\" {",
+        "  bucket = \"{slug}\"",
+        "}"
+      ]
+    },
+    "queue": {
+      "block": [
+        "resource \"aws_sqs_queue\" \"{id}\" {",
+        "  name = \"{slug}\"",
+        "}"
+      ]
+    },
+    "pub-sub": {
+      "block": [
+        "resource \"aws_sns_topic\" \"{id}\" {",
+        "  name = \"{slug}\"",
+        "}"
+      ]
+    },
+    "stream": {
+      "block": [
+        "resource \"aws_kinesis_stream\" \"{id}\" {",
+        "  name        = \"{slug}\"",
+        "  shard_count = 1",
+        "}"
+      ]
+    },
+    "metrics": {
+      "note": "CloudWatch collects metrics for AWS resources by default."
+    },
+    "logs": {
+      "block": [
+        "resource \"aws_cloudwatch_log_group\" \"{id}\" {",
+        "  name              = \"/app/{slug}\"",
+        "  retention_in_days = 30",
+        "}"
+      ]
+    },
+    "tracing": {
+      "note": "Turn on AWS X-Ray tracing on the compute resources."
+    },
+    "error-tracking": {
+      "note": "Usually a third-party service (Sentry and similar): nothing to deploy here."
+    },
+    "alerting": {
+      "block": [
+        "# Subscribe people to this topic, and point CloudWatch alarms at it.",
+        "resource \"aws_sns_topic\" \"{id}\" {",
+        "  name = \"{slug}\"",
+        "}"
+      ]
+    }
+  },
+  "importHints": [
+    {
+      "type": "aws_apigatewayv2_api",
+      "match": "WEBSOCKET",
+      "kind": "websocket-gateway"
+    }
+  ],
+  "ignoredTypes": [
+    "aws_security_group",
+    "aws_security_group_rule",
+    "aws_iam_role",
+    "aws_iam_role_policy",
+    "aws_iam_role_policy_attachment",
+    "aws_vpc",
+    "aws_subnet",
+    "aws_internet_gateway",
+    "aws_route_table",
+    "aws_route_table_association",
+    "aws_db_subnet_group",
+    "aws_lb_listener",
+    "aws_lb_target_group",
+    "aws_lb_target_group_attachment",
+    "aws_key_pair"
+  ]
+}

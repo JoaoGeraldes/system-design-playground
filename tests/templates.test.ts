@@ -14,6 +14,7 @@ import {
 const templateFolders = [
   '../src/content/templates/',
   '../src/content/templates/foundations/',
+  '../src/content/templates/experiments/',
 ];
 const templateFiles = templateFolders.flatMap((folder) => {
   const url = new URL(folder, import.meta.url);

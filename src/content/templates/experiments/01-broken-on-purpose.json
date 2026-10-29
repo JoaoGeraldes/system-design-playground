@@ -1,0 +1,36 @@
+{
+  "id": "broken-on-purpose",
+  "title": "Broken on purpose",
+  "summary": "A design with mistakes in it. Find them with the flow check icon.",
+  "lesson": {
+    "problem": "This board looks plausible, but it has wrong connections and loose parts. Can you get it to work?",
+    "why": [
+      "Click the status icon at the top right of the board to see what is wrong and why. Fix a problem, check again, and repeat until it says it works.",
+      "Then keep experimenting: add components, rewire things, switch on Worst day, and see what the checker says. Only well-known mistakes get a warning, so unusual structures are yours to try."
+    ],
+    "takeaways": [
+      "Clients should reach data through a server, never directly.",
+      "A component nothing sends traffic to does nothing.",
+      "Watch the icon: small changes are easier to explain than big ones."
+    ]
+  },
+  "nodes": [
+    { "id": "client", "kind": "client", "label": "Browser", "x": 0, "y": 0 },
+    {
+      "id": "db",
+      "kind": "sql-database",
+      "label": "Database",
+      "x": 300,
+      "y": 0
+    },
+    {
+      "id": "server",
+      "kind": "app-server",
+      "label": "Server",
+      "x": 300,
+      "y": 160
+    },
+    { "id": "cache", "kind": "cache", "label": "Cache", "x": 600, "y": 160 }
+  ],
+  "cables": [{ "from": "client.right", "to": "db.left", "label": "HTTP" }]
+}

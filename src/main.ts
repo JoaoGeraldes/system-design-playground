@@ -16,6 +16,18 @@ import {
 } from './model/design.ts';
 import { rectBetween, type Point } from './model/geometry.ts';
 import { UndoHistory } from './model/history.ts';
+import { tidyUp } from './model/layout.ts';
+import {
+  toTerraform,
+  TERRAFORM_TARGETS,
+  type TerraformTarget,
+} from './model/terraform.ts';
+import { parseTerraform } from './model/terraformImport.ts';
+import { boardToPng } from './board/exportImage.ts';
+import { createFlowPanel } from './ui/flowPanel.ts';
+import { createAdvice } from './ui/advice.ts';
+import { adviseConnection } from './simulation/connections.ts';
+import { checkFlow } from './simulation/flowCheck.ts';
 import { createCableToolbar } from './ui/cableToolbar.ts';
 import { createLabelEditor } from './ui/labelEditor.ts';
 import {
@@ -84,6 +96,11 @@ const drawer = document.querySelector<HTMLElement>('#drawer')!;
 const drawerContent = document.querySelector<HTMLElement>('#drawer-content')!;
 const drawerCloseButton = document.querySelector<HTMLElement>('#drawer-close')!;
 const lessonOpenButton = document.querySelector<HTMLElement>('#lesson-open')!;
+const terraformButton =
+  document.querySelector<HTMLElement>('#export-terraform')!;
+const terraformTarget =
+  document.querySelector<HTMLSelectElement>('#terraform-target')!;
+const exportPngButton = document.querySelector<HTMLElement>('#export-png')!;
 const copyJsonButton = document.querySelector<HTMLElement>('#copy-json')!;
 const flowToggle = document.querySelector<HTMLInputElement>('#flow-toggle')!;
 const worstToggle = document.querySelector<HTMLInputElement>('#worst-toggle')!;
@@ -91,7 +108,9 @@ const legendWorst = document.querySelector<HTMLElement>('#legend-worst')!;
 const labelInput = document.querySelector<HTMLInputElement>('#label-editor')!;
 const menuToggle = document.querySelector<HTMLElement>('#menu-toggle')!;
 const menuBackdrop = document.querySelector<HTMLElement>('#menu-backdrop')!;
+const advice = createAdvice(document.querySelector<HTMLElement>('#advice')!);
 const blankBoardButton = document.querySelector<HTMLElement>('#blank-board')!;
+const tidyUpButton = document.querySelector<HTMLElement>('#tidy-up')!;
 const addGroupButton = document.querySelector<HTMLElement>('#add-group')!;
 const addGroupLabel = document.querySelector<HTMLElement>('#add-group-label')!;
 const backToNutshellButton =
@@ -267,6 +286,14 @@ function setGroupMode(on: boolean): void {
 }
 addGroupButton.addEventListener('click', () => setGroupMode(!groupMode));
 
+tidyUpButton.addEventListener('click', () => {
+  if (design.nodes.length === 0) return;
+  undoHistory.record(design);
+  tidyUp(design);
+  fitToDesign();
+  showToast('Tidied up', { undo: true });
+});
+
 function finishGroup(start: Point, end: Point): void {
   let area = rectBetween(start, end);
   if (area.width < MIN_GROUP_SIZE || area.height < MIN_GROUP_SIZE) {
@@ -421,23 +448,72 @@ exportButton.addEventListener('click', () => {
   showToast(`Exported “${fileName}”`);
 });
 
+for (const { id, name } of TERRAFORM_TARGETS) {
+  terraformTarget.append(new Option(name, id));
+}
+
+terraformButton.addEventListener('click', () => {
+  if (design.nodes.length === 0) {
+    showToast('The board is empty, so there is nothing to export yet.');
+    return;
+  }
+  const target = terraformTarget.value as TerraformTarget;
+  const { text, warnings } = toTerraform(design, target);
+  const fileName = `${currentTemplate?.id ?? 'my-board'}-${target}.tf`;
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const skipped =
+    warnings.length === 0
+      ? ''
+      : `. ${warnings.length} without an equivalent, left as comments`;
+  showToast(`Exported “${fileName}”${skipped}`);
+});
+
+exportPngButton.addEventListener('click', async () => {
+  const png = await boardToPng(design, scene.flow, scene.load);
+  if (!png) {
+    showToast('The board is empty, so there is nothing to export yet.');
+    return;
+  }
+  const fileName = `${currentTemplate?.id ?? 'my-board'}.png`;
+  const url = URL.createObjectURL(png);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`Exported “${fileName}”`);
+});
+
 importButton.addEventListener('click', () => importInput.click());
 importInput.addEventListener('change', () => {
-  const file = importInput.files?.[0];
+  const files = [...(importInput.files ?? [])];
   // Cleared, so choosing the same file again still counts as a change.
   importInput.value = '';
-  if (file) importFile(file);
+  if (files.length > 0) importFile(files);
 });
 
 /** Checks a file before anything changes; a bad file never touches the board. */
-async function importFile(file: File): Promise<void> {
+async function importFile(files: File[]): Promise<void> {
   setMenuOpen(false);
+  if (files.every((file) => /\.tf$/i.test(file.name))) {
+    await importTerraform(files);
+    return;
+  }
+  const [file] = files;
   const looksLikeJson =
     /\.json$/i.test(file.name) || file.type === 'application/json';
-  if (!looksLikeJson) {
-    showToast(`“${file.name}” isn't a .json file, so it can't be imported.`, {
-      error: true,
-    });
+  if (files.length > 1 || !looksLikeJson) {
+    showToast(
+      files.length > 1
+        ? 'Drop one .json board file, or only .tf files.'
+        : `“${file.name}” isn't a .json or .tf file, so it can't be imported.`,
+      { error: true },
+    );
     return;
   }
   const result = parseBoard(await file.text(), file.name);
@@ -449,6 +525,24 @@ async function importFile(file: File): Promise<void> {
   }
   showImportedBoard(result.board);
   showToast(`Imported “${file.name}”`, { undo: true });
+}
+
+/** Several .tf files are read as one set of resources. */
+async function importTerraform(files: File[]): Promise<void> {
+  const text = (await Promise.all(files.map((file) => file.text()))).join('\n');
+  const result = parseTerraform(text);
+  if ('error' in result) {
+    showToast(`Couldn't import Terraform: ${result.error}`, { error: true });
+    return;
+  }
+  showImportedBoard(result.board);
+  const unknown = result.notes.length;
+  showToast(
+    unknown === 0
+      ? 'Imported Terraform'
+      : `Imported Terraform. ${unknown} resource${unknown === 1 ? ' has' : 's have'} no equivalent and ${unknown === 1 ? 'shows' : 'show'} as External Service`,
+    { undo: true },
+  );
 }
 
 // Files dragged over the board light up a drop target, so dropping feels
@@ -482,12 +576,7 @@ boardElement.addEventListener('drop', (event) => {
   event.preventDefault();
   event.stopPropagation();
   setDropZoneShown(false);
-  const files = [...event.dataTransfer!.files];
-  if (files.length !== 1) {
-    showToast('Drop one .json board file at a time.', { error: true });
-    return;
-  }
-  importFile(files[0]);
+  importFile([...event.dataTransfer!.files]);
 });
 
 // Dropped anywhere else, the browser would open the file and leave the app.
@@ -1165,12 +1254,61 @@ canvas.addEventListener('pointerup', () => {
     design.canConnect(draft.from, draft.snap)
   ) {
     const cable = plugIn(draft, draft.snap);
-    if (cable) scene.selection = { type: 'cable', id: cable.id };
+    if (cable) {
+      scene.selection = { type: 'cable', id: cable.id };
+      adviseOnCable(cable.id);
+    }
   }
   scene.draft = null;
   gesture = { type: 'idle' };
   updateHover();
 });
+
+/** Pops up advice when a new cable joins two things that don't belong. */
+function adviseOnCable(cableId: string): void {
+  const cable = design.getCable(cableId);
+  const from = design.getNode(cable.from.nodeId);
+  const to = design.getNode(cable.to.nodeId);
+  const found = adviseConnection(from.kind, to.kind);
+  if (!found) return;
+  const nameOf = (node: typeof from) => node.label ?? findKind(node.kind).label;
+  advice.showConnection(
+    found,
+    { from: nameOf(from), to: nameOf(to) },
+    {
+      flipCable: () => {
+        undoHistory.record(design);
+        design.flipCable(cableId);
+      },
+      removeCable: () => {
+        undoHistory.record(design);
+        design.removeCable(cableId);
+        scene.selection = null;
+      },
+    },
+  );
+}
+
+const flowPanel = createFlowPanel(
+  document.querySelector<HTMLDetailsElement>('#flow-panel')!,
+  (id) => {
+    scene.selection = { type: 'node', id };
+    scene.openWheel = `node:${id}`;
+  },
+);
+// The check reruns only when something it depends on changes.
+let checkedFor = '';
+
+function syncFlowPanel(): void {
+  const key = JSON.stringify([
+    design.nodes.map(({ id, kind, users }) => [id, kind, users]),
+    design.cables.map(({ from, to }) => [from.nodeId, to.nodeId]),
+    worstToggle.checked,
+  ]);
+  if (key === checkedFor) return;
+  checkedFor = key;
+  flowPanel.update(checkFlow(design, scenario()));
+}
 
 /** Pulls one end of a cable out; the cable then follows the pointer. */
 function unplug(cableId: string, end: 'from' | 'to'): void {
@@ -1428,6 +1566,7 @@ function frame(now: number): void {
   // The legend explains what traffic looks like, so it shows with it.
   legend.hidden = scene.load === null || design.nodes.length === 0;
   forgetInfoOnceDeselected();
+  syncFlowPanel();
   syncDrawer();
   labelEditor.follow();
   syncCableToolbar();
@@ -1446,7 +1585,9 @@ function frame(now: number): void {
 
 resize();
 // Phones have little room: the legend starts folded there.
-if (isPhoneLayout()) legend.open = false;
+if (isPhoneLayout()) {
+  legend.open = false;
+}
 
 const startHash = decodeURIComponent(location.hash.slice(1));
 openTemplate(startHash);

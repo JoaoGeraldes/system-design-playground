@@ -1372,3 +1372,149 @@ kbd {
     --muted: #c2c2c2;
   }
 }
+
+/* Advice: a card over the board explaining a wrong connection or the flow check. */
+.advice {
+  position: absolute;
+  right: 16px;
+  bottom: 24px;
+  z-index: 16;
+  width: min(440px, calc(100% - 32px));
+  max-height: min(70vh, 560px);
+  display: flex;
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  background: var(--surface-menu);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.advice[hidden] {
+  display: none;
+}
+
+.advice-content {
+  flex: 1;
+  padding: 16px 20px 20px;
+  overflow-y: auto;
+}
+
+.advice-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.advice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Flow check: just its status icon until unfolded into the advice card. */
+.flow-panel {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  z-index: 16;
+}
+
+.flow-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  background: var(--surface-menu);
+  list-style: none;
+  cursor: pointer;
+}
+
+.flow-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.flow-body {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  width: min(440px, calc(100vw - 32px));
+  max-height: min(70vh, 560px);
+  padding: 16px 20px 20px;
+  overflow-y: auto;
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  background: var(--surface-menu);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.flow-icon {
+  display: inline-flex;
+}
+
+.flow-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.flow-error {
+  color: var(--status-over);
+}
+
+.flow-warning {
+  color: var(--status-busy);
+}
+
+.flow-suggestion {
+  color: var(--accent);
+}
+
+.flow-ok {
+  color: var(--status-fine);
+}
+
+/* Out of the drawer's way when it is open on the right. */
+@media (min-width: 721px) {
+  .board:has(.drawer:not([hidden])) .flow-panel {
+    top: 16px;
+    right: calc(var(--drawer-width) + 32px);
+  }
+}
+
+/* Export and import stay folded until asked for. */
+.file-options {
+  margin-top: 10px;
+}
+
+.file-options summary {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--text);
+  list-style: none;
+  cursor: pointer;
+}
+
+.file-options summary::-webkit-details-marker {
+  display: none;
+}
+
+.file-options summary::after {
+  content: '▸';
+  margin-left: auto;
+}
+
+.file-options[open] summary::after {
+  content: '▾';
+}

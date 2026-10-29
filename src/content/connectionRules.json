@@ -1,0 +1,41 @@
+[
+  {
+    "from": ["external", "routing", "compute", "data", "async", "edge"],
+    "to": ["client"],
+    "problem": "A client sends requests; it doesn't receive them. Nothing can call a user's browser or app like a server.",
+    "suggestion": "Flip the cable so the client is the caller, or send the reply back along the same cable.",
+    "flip": true
+  },
+  {
+    "from": ["client"],
+    "to": ["data"],
+    "problem": "Clients shouldn't talk to a database or cache directly: anyone could read or change everything, and every user would hold a connection open.",
+    "suggestion": "Put an App Server (or an API Gateway in front of one) between the client and the data."
+  },
+  {
+    "from": ["client"],
+    "to": ["queue", "pub-sub", "stream", "worker", "shard-router"],
+    "problem": "Clients don't talk to background plumbing directly. It has no way to check who is asking or answer them.",
+    "suggestion": "Send the client to an App Server, and let the server hand work to the queue."
+  },
+  {
+    "from": ["data", "observability"],
+    "to": ["compute", "routing", "edge"],
+    "problem": "Databases, caches and monitoring tools answer or watch; they don't call your servers.",
+    "suggestion": "Flip the cable so the server calls them instead.",
+    "flip": true
+  },
+  {
+    "from": ["load-balancer", "api-gateway", "rate-limiter", "dns", "cdn"],
+    "to": ["data"],
+    "problem": "This sits in front of servers and passes requests on to them. Reaching a database straight from here skips the code that decides what to read or write.",
+    "suggestion": "Connect it to an App Server, and the App Server to the data."
+  },
+  {
+    "from": ["cache"],
+    "to": ["compute", "routing"],
+    "problem": "A cache holds answers; it doesn't call servers.",
+    "suggestion": "Flip the cable so the server checks the cache.",
+    "flip": true
+  }
+]

@@ -7,6 +7,7 @@ import { fixesFor } from '../src/simulation/fixes.ts';
 const boardIds = [
   '../src/content/templates/',
   '../src/content/templates/foundations/',
+  '../src/content/templates/experiments/',
 ].flatMap((folder) => {
   const url = new URL(folder, import.meta.url);
   return readdirSync(url)

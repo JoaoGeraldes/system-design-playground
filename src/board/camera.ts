@@ -56,3 +56,15 @@ export function fitCamera(
     y: view.height / 2 - centerY * scale,
   };
 }
+
+/** A camera and image size that show all of `bounds` at 100%, with a margin. */
+export function frameCamera(
+  bounds: { left: number; top: number; right: number; bottom: number },
+  margin = 48,
+): { camera: Camera; width: number; height: number } {
+  return {
+    camera: { scale: 1, x: margin - bounds.left, y: margin - bounds.top },
+    width: Math.ceil(bounds.right - bounds.left + margin * 2),
+    height: Math.ceil(bounds.bottom - bounds.top + margin * 2),
+  };
+}

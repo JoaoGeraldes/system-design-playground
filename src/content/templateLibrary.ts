@@ -37,4 +37,15 @@ export const SECTIONS: TemplateSection[] = [
       }),
     ),
   },
+  {
+    name: 'Experiments',
+    itemName: 'Experiment',
+    headings: { problem: 'The challenge', why: 'How to play' },
+    templates: sortedByFile(
+      import.meta.glob<Template>('./templates/experiments/*.json', {
+        eager: true,
+        import: 'default',
+      }),
+    ),
+  },
 ];

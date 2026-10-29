@@ -39,42 +39,56 @@
         <p class="toggle-hint">
           A rush: 3× the traffic, and 4 database queries per request.
         </p>
-        <div class="file-actions" role="group" aria-label="Board file">
-          <button
-            id="export-board"
-            type="button"
-            title="Export the board as a .json file"
-            aria-label="Export the board as a .json file"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M8 2v8m-3.5-3.5L8 10l3.5-3.5M3 13h10" />
-            </svg>
-            Export
+        <details class="file-options">
+          <summary>Export &amp; import</summary>
+          <div class="file-actions" role="group" aria-label="Board file">
+            <button
+              id="export-board"
+              type="button"
+              title="Export the board as a .json file"
+              aria-label="Export the board as a .json file"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 2v8m-3.5-3.5L8 10l3.5-3.5M3 13h10" />
+              </svg>
+              Export
+            </button>
+            <button
+              id="import-board"
+              type="button"
+              title="Import a .json board or .tf Terraform files"
+              aria-label="Import a .json board or .tf Terraform files"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 10V2M4.5 5.5 8 2l3.5 3.5M3 13h10" />
+              </svg>
+              Import
+            </button>
+          </div>
+          <p class="file-hint wide-only">
+            Or drop a .json board or .tf Terraform files onto the board.
+          </p>
+          <input
+            id="import-file"
+            type="file"
+            accept=".json,application/json,.tf"
+            multiple
+            hidden
+          />
+          <label class="field">
+            <span>Terraform for</span>
+            <select id="terraform-target"></select>
+          </label>
+          <button id="export-terraform" class="secondary-button" type="button">
+            Export as Terraform
           </button>
-          <button
-            id="import-board"
-            type="button"
-            title="Import a .json board file"
-            aria-label="Import a .json board file"
-          >
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M8 10V2M4.5 5.5 8 2l3.5 3.5M3 13h10" />
-            </svg>
-            Import
+          <button id="export-png" class="secondary-button" type="button">
+            Export as PNG
           </button>
-        </div>
-        <p class="file-hint wide-only">
-          Or drop a .json board file onto the board.
-        </p>
-        <input
-          id="import-file"
-          type="file"
-          accept=".json,application/json"
-          hidden
-        />
-        <button id="copy-json" class="secondary-button" type="button">
-          Copy board as JSON
-        </button>
+          <button id="copy-json" class="secondary-button" type="button">
+            Copy board as JSON
+          </button>
+        </details>
       </footer>
     </aside>
     <div id="menu-backdrop" class="menu-backdrop"></div>
@@ -113,6 +127,14 @@
             <rect x="1.5" y="2.5" width="13" height="11" rx="2.5" />
           </svg>
           <span id="add-group-label">Draw a group</span>
+        </button>
+        <button
+          id="tidy-up"
+          class="board-button"
+          type="button"
+          title="Rearrange the components so traffic reads left to right and cables cross less"
+        >
+          Tidy up
         </button>
       </div>
       <div
@@ -171,6 +193,12 @@
           >
         </button>
       </div>
+      <details id="flow-panel" class="flow-panel">
+        <summary>
+          <span class="flow-header-icon"></span>
+        </summary>
+        <div class="flow-body"></div>
+      </details>
       <details id="legend" class="legend" open>
         <summary>Legend</summary>
         <div class="legend-body">
@@ -344,6 +372,16 @@
           role="radiogroup"
           aria-labelledby="users-picker-title"
         ></div>
+      </div>
+      <div
+        id="advice"
+        class="advice"
+        role="dialog"
+        aria-label="Advice about your design"
+        hidden
+      >
+        <button class="advice-close" type="button" aria-label="Close">×</button>
+        <div class="advice-content"></div>
       </div>
       <div id="toast" class="toast" role="status" hidden>
         <span id="toast-message"></span>

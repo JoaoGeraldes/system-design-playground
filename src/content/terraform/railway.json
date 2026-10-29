@@ -1,0 +1,273 @@
+{
+  "name": "Railway",
+  "header": [
+    "terraform {",
+    "  required_providers {",
+    "    railway = {",
+    "      source = \"terraform-community-providers/railway\"",
+    "    }",
+    "  }",
+    "}",
+    "",
+    "# Sign in by setting the RAILWAY_TOKEN environment variable.",
+    "provider \"railway\" {}",
+    "",
+    "resource \"railway_project\" \"main\" {",
+    "  name = \"system-design\"",
+    "}"
+  ],
+  "variables": {
+    "source_repo": {
+      "description": "GitHub repository the services deploy from, like owner/name"
+    }
+  },
+  "kinds": {
+    "client": {
+      "skip": "Users' browsers and apps: nothing to deploy."
+    },
+    "external-service": {
+      "skip": "A third-party service: nothing to deploy."
+    },
+    "dns": {
+      "note": "Railway gives each service a domain; add custom domains with railway_custom_domain."
+    },
+    "cdn": {
+      "note": "Railway has no CDN: put a provider such as Cloudflare in front of the service."
+    },
+    "load-balancer": {
+      "note": "Railway balances traffic across a service's replicas itself (set num_replicas in its regions block)."
+    },
+    "api-gateway": {
+      "note": "Railway has no API gateway: run one as a service, or use your framework's routing."
+    },
+    "rate-limiter": {
+      "note": "Railway has no rate limiter: add one in your application or in front of it."
+    },
+    "shard-router": {
+      "note": "Routing requests to the right shard happens in your application code, not in infrastructure."
+    },
+    "websocket-gateway": {
+      "variables": ["source_repo"],
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name               = \"{slug}\"",
+        "  project_id         = railway_project.main.id",
+        "  source_repo        = var.source_repo",
+        "  source_repo_branch = \"main\"",
+        "}"
+      ],
+      "service": true
+    },
+    "app-server": {
+      "variables": ["source_repo"],
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name               = \"{slug}\"",
+        "  project_id         = railway_project.main.id",
+        "  source_repo        = var.source_repo",
+        "  source_repo_branch = \"main\"",
+        "}"
+      ],
+      "service": true
+    },
+    "worker": {
+      "variables": ["source_repo"],
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name               = \"{slug}\"",
+        "  project_id         = railway_project.main.id",
+        "  source_repo        = var.source_repo",
+        "  source_repo_branch = \"main\"",
+        "}"
+      ],
+      "service": true
+    },
+    "function": {
+      "variables": ["source_repo"],
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name               = \"{slug}\"",
+        "  project_id         = railway_project.main.id",
+        "  source_repo        = var.source_repo",
+        "  source_repo_branch = \"main\"",
+        "  serverless         = true",
+        "}"
+      ],
+      "service": true
+    },
+    "sql-database": {
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  project_id   = railway_project.main.id",
+        "  source_image = \"postgres:16\"",
+        "",
+        "  volume = {",
+        "    name       = \"{slug}-data\"",
+        "    mount_path = \"/var/lib/postgresql/data\"",
+        "  }",
+        "}"
+      ],
+      "service": true
+    },
+    "nosql-database": {
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  project_id   = railway_project.main.id",
+        "  source_image = \"mongo:7\"",
+        "",
+        "  volume = {",
+        "    name       = \"{slug}-data\"",
+        "    mount_path = \"/data/db\"",
+        "  }",
+        "}"
+      ],
+      "service": true
+    },
+    "search-index": {
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  project_id   = railway_project.main.id",
+        "  source_image = \"opensearchproject/opensearch:2\"",
+        "",
+        "  volume = {",
+        "    name       = \"{slug}-data\"",
+        "    mount_path = \"/usr/share/opensearch/data\"",
+        "  }",
+        "}"
+      ],
+      "service": true
+    },
+    "cache": {
+      "block": [
+        "resource \"railway_service\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  project_id   = railway_project.main.id",
+        "  source_image = \"redis:7\"",
+        "}"
+      ],
+      "service": true
+    },
+    "queue": {
+      "block": [
+        "# A queue on Railway is Redis: use it with a queue library.",
+        "resource \"railway_service\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  project_id   = railway_project.main.id",
+        "  source_image = \"redis:7\"",
+        "}"
+      ],
+      "service": true
+    },
+    "pub-sub": {
+      "block": [
+        "# Pub/sub on Railway is Redis channels.",
+        "resource \"railway_service\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  project_id   = railway_project.main.id",
+        "  source_image = \"redis:7\"",
+        "}"
+      ],
+      "service": true
+    },
+    "stream": {
+      "block": [
+        "# A stream on Railway is Redis streams.",
+        "resource \"railway_service\" \"{id}\" {",
+        "  name         = \"{slug}\"",
+        "  project_id   = railway_project.main.id",
+        "  source_image = \"redis:7\"",
+        "}"
+      ],
+      "service": true
+    },
+    "object-storage": {
+      "block": [
+        "# Object storage on Railway is MinIO, which speaks the S3 API.",
+        "resource \"railway_service\" \"{id}\" {",
+        "  name          = \"{slug}\"",
+        "  project_id    = railway_project.main.id",
+        "  source_image  = \"minio/minio\"",
+        "  start_command = \"minio server /data\"",
+        "",
+        "  volume = {",
+        "    name       = \"{slug}-data\"",
+        "    mount_path = \"/data\"",
+        "  }",
+        "}"
+      ],
+      "service": true
+    },
+    "metrics": {
+      "note": "Railway shows metrics for each service; add Prometheus or a hosted tool for more."
+    },
+    "logs": {
+      "note": "Railway keeps each service's logs; add a log service to ship them elsewhere."
+    },
+    "tracing": {
+      "note": "Add an OpenTelemetry collector as a service, or use a hosted tracing tool."
+    },
+    "error-tracking": {
+      "note": "Usually a third-party service (Sentry and similar): nothing to deploy here."
+    },
+    "alerting": {
+      "note": "Railway can send deploy notifications; use a monitoring tool for alerts on metrics."
+    }
+  },
+  "connection": [
+    "resource \"railway_variable\" \"{id}\" {",
+    "  name           = \"{toEnv}_URL\"",
+    "  value          = \"http://${railway_service.{to}.name}.railway.internal\"",
+    "  environment_id = railway_project.main.default_environment.id",
+    "  service_id     = railway_service.{from}.id",
+    "}"
+  ],
+  "importHints": [
+    {
+      "type": "railway_service",
+      "match": "postgres",
+      "kind": "sql-database"
+    },
+    {
+      "type": "railway_service",
+      "match": "mongo",
+      "kind": "nosql-database"
+    },
+    {
+      "type": "railway_service",
+      "match": "opensearch",
+      "kind": "search-index"
+    },
+    {
+      "type": "railway_service",
+      "match": "minio",
+      "kind": "object-storage"
+    },
+    {
+      "type": "railway_service",
+      "match": "redis",
+      "kind": "cache"
+    },
+    {
+      "type": "railway_service",
+      "match": "serverless",
+      "kind": "function"
+    },
+    {
+      "type": "railway_service",
+      "match": "",
+      "kind": "app-server"
+    }
+  ],
+  "ignoredTypes": [
+    "railway_project",
+    "railway_variable",
+    "railway_volume",
+    "railway_service_domain",
+    "railway_custom_domain",
+    "railway_tcp_proxy",
+    "railway_environment"
+  ]
+}

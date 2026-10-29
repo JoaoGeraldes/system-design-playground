@@ -1,0 +1,158 @@
+import { findKind } from '../content/components.ts';
+import aws from '../content/terraform/aws.json' with { type: 'json' };
+import railway from '../content/terraform/railway.json' with { type: 'json' };
+import type { Design } from './design.ts';
+
+export type TerraformTarget = 'aws' | 'railway';
+
+export const TERRAFORM_TARGETS: { id: TerraformTarget; name: string }[] = [
+  { id: 'aws', name: aws.name },
+  { id: 'railway', name: railway.name },
+];
+
+/** How one kind of component becomes Terraform on one platform. */
+interface KindMapping {
+  /** Lines of Terraform; `{id}`, `{slug}` and `{label}` are filled in. */
+  block?: string[];
+  /** Variables the block uses. */
+  variables?: string[];
+  /** Why there is nothing to write, when that is worth saying. */
+  note?: string;
+  /** Nothing to deploy, and nothing to warn about. */
+  skip?: string;
+  /** Other components can reach this one over the platform's network. */
+  service?: boolean;
+}
+
+interface TargetMapping {
+  header: string[];
+  /** Variables the header itself uses. */
+  alwaysVariables?: string[];
+  variables: Record<
+    string,
+    {
+      description: string;
+      default?: string;
+      sensitive?: boolean;
+      type?: string;
+    }
+  >;
+  kinds: Record<string, KindMapping>;
+  /** On import: a resource whose text contains `match` is this kind. */
+  importHints?: { type: string; match: string; kind: string }[];
+  /** On import: supporting resources that are not components of their own. */
+  ignoredTypes?: string[];
+  /** A block for each cable between two services, when the platform has one. */
+  connection?: string[];
+}
+
+const TARGETS: Record<TerraformTarget, TargetMapping> = { aws, railway };
+
+export const ALL_MAPPINGS: TargetMapping[] = Object.values(TARGETS);
+
+export interface TerraformExport {
+  /** The contents of a `main.tf` file. */
+  text: string;
+  /** Components that couldn't be written, and why. */
+  warnings: string[];
+}
+
+/** "Primary DB" becomes "primary_db", a name Terraform accepts. */
+function identifier(label: string): string {
+  const name = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+  return /^[a-z_]/.test(name) ? name : `c_${name}`;
+}
+
+const fill = (lines: string[], values: Record<string, string>) =>
+  lines.join('\n').replace(/\{(\w+)\}/g, (match, key) => values[key] ?? match);
+
+/**
+ * The board as a starting Terraform file for a platform: one resource per
+ * component it has an equivalent for, and a comment for the rest. Cables
+ * become comments, or variables where the platform can wire services up.
+ */
+export function toTerraform(
+  design: Design,
+  target: TerraformTarget,
+): TerraformExport {
+  const mapping = TARGETS[target];
+  const used = new Set<string>();
+  const ids = new Map<string, string>();
+  const labels = new Map<string, string>();
+  for (const node of design.nodes) {
+    const label = node.label ?? findKind(node.kind).label;
+    const base = identifier(label);
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
+    used.add(id);
+    ids.set(node.id, id);
+    labels.set(node.id, label);
+  }
+
+  const warnings: string[] = [];
+  const variables = new Set<string>(mapping.alwaysVariables);
+  const sections: string[] = [];
+  const services = new Set<string>();
+  for (const node of design.nodes) {
+    const kind = mapping.kinds[node.kind];
+    const label = labels.get(node.id)!;
+    if (!kind || kind.skip) continue;
+    if (!kind.block) {
+      const reason = kind.note ?? 'No equivalent yet.';
+      warnings.push(`${label}: ${reason}`);
+      sections.push(`# ${label}: ${reason}`);
+      continue;
+    }
+    kind.variables?.forEach((name) => variables.add(name));
+    if (kind.service) services.add(node.id);
+    const id = ids.get(node.id)!;
+    sections.push(fill(kind.block, { id, slug: id.replace(/_/g, '-'), label }));
+  }
+
+  const connections = design.cables.map((cable) => {
+    const [from, to] = [cable.from.nodeId, cable.to.nodeId];
+    const line = `# ${ids.get(from)} -> ${ids.get(to)}`;
+    if (!mapping.connection || !services.has(from) || !services.has(to)) {
+      return line;
+    }
+    const [fromId, toId] = [ids.get(from)!, ids.get(to)!];
+    const block = fill(mapping.connection, {
+      id: `${fromId}_uses_${toId}`,
+      from: fromId,
+      to: toId,
+      toEnv: toId.toUpperCase(),
+    });
+    return `${line}\n${block}`;
+  });
+
+  const declared = [...variables].sort().map((name) => {
+    const {
+      description,
+      default: fallback,
+      sensitive,
+      type,
+    } = mapping.variables[name];
+    const lines = [`variable "${name}" {`];
+    lines.push(`  description = "${description}"`);
+    if (type) lines.push(`  type        = ${type}`);
+    if (fallback) lines.push(`  default     = "${fallback}"`);
+    if (sensitive) lines.push('  sensitive   = true');
+    return [...lines, '}'].join('\n');
+  });
+
+  const parts = [
+    `# Generated by System Design Playground. A starting point, not production-ready:\n# review sizes, networking and security before applying.`,
+    mapping.header.join('\n'),
+    ...declared,
+    ...sections,
+  ];
+  if (connections.length > 0) {
+    parts.push(
+      `# Connections (caller -> callee), read back when imported\n${connections.join('\n')}`,
+    );
+  }
+  return { text: `${parts.join('\n\n')}\n`, warnings };
+}
