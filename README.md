@@ -1,4 +1,4 @@
-# System Design Playground
+# <img src="public/logo.svg" alt="" height="28" /> System Design Playground
 
 [![Checks](https://github.com/JoaoGeraldes/system-design-playground/actions/workflows/check.yml/badge.svg)](https://github.com/JoaoGeraldes/system-design-playground/actions/workflows/check.yml)
 

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>System Design Playground</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,7 +17,20 @@
   <body>
     <aside id="sidebar" class="sidebar">
       <header class="sidebar-header">
-        <h1><a href="../" title="About this playground">System Design</a></h1>
+        <div class="sidebar-title">
+          <h1>
+            <a href="../" title="About this playground"
+              ><img src="/logo.svg" alt="" />System Design</a
+            >
+          </h1>
+          <a
+            class="project-link"
+            href="https://github.com/JoaoGeraldes/system-design-playground"
+            target="_blank"
+            rel="noopener"
+            >About the project ↗</a
+          >
+        </div>
         <button id="nutshell-open" class="nutshell-open" type="button">
           <strong>In a nutshell</strong>
           <span>The questions to ask before you build</span>
