@@ -39,9 +39,25 @@
       <a class="wordmark" href="./"
         ><img src="/logo.svg" alt="" />System Design Playground</a
       >
-      <a href="https://github.com/JoaoGeraldes/system-design-playground"
-        >Source on GitHub</a
-      >
+      <nav class="repo-links" aria-label="The project on GitHub">
+        <a href="https://github.com/JoaoGeraldes/system-design-playground"
+          >Source on GitHub</a
+        >
+        <a
+          class="repo-stat"
+          data-stat="stars"
+          href="https://github.com/JoaoGeraldes/system-design-playground/stargazers"
+          hidden
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M8 1.5l1.9 4.1 4.5.5-3.4 3 1 4.5L8 11.3l-4 2.3 1-4.5-3.4-3 4.5-.5z"
+            />
+          </svg>
+          <span class="repo-stat-count"></span>
+        </a>
+      </nav>
     </header>
 
     <main>
@@ -220,6 +236,17 @@
           Best on a laptop or desktop: the board needs a mouse or trackpad.
         </p>
       </section>
+
+      <section id="contributors" hidden>
+        <h2>Contributors</h2>
+        <p>
+          Thanks to everyone who has helped build it.
+          <a href="https://github.com/JoaoGeraldes/system-design-playground"
+            >Join in on GitHub</a
+          >.
+        </p>
+        <ul class="contributors"></ul>
+      </section>
     </main>
 
     <footer class="site-footer">
@@ -230,5 +257,6 @@
         >.
       </p>
     </footer>
+    <script type="module" src="/src/landing/main.ts"></script>
   </body>
 </html>
