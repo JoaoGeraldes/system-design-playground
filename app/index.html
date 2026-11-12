@@ -127,8 +127,12 @@
           class="blank-board"
           type="button"
           title="Clear the board and build your own design"
+          aria-label="Blank board"
         >
-          ＋ Blank board
+          <svg class="button-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 1.5h5.5L13 5v9.5H4z M8.5 7.5v4M6.5 9.5h4" />
+          </svg>
+          <span class="wide-only">Blank board</span>
         </button>
         <button
           id="add-group"
@@ -136,19 +140,34 @@
           type="button"
           aria-pressed="false"
           title="Draw a named area, like a region: drag on the board, or tap to place one. Esc cancels."
+          aria-label="Draw a group"
         >
-          <svg class="dashed-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <svg
+            class="button-icon dashed-icon"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+          >
             <rect x="1.5" y="2.5" width="13" height="11" rx="2.5" />
           </svg>
-          <span id="add-group-label">Draw a group</span>
+          <span class="group-label wide-only">Draw a group</span>
+          <span class="group-hint"
+            >Drag or tap<span class="wide-only"> on the board</span></span
+          >
         </button>
         <button
           id="tidy-up"
           class="board-button"
           type="button"
           title="Rearrange the components so traffic reads left to right and cables cross less"
+          aria-label="Tidy up"
         >
-          Tidy up
+          <svg class="button-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="1" y="2" width="4" height="3" rx="0.8" />
+            <rect x="1" y="11" width="4" height="3" rx="0.8" />
+            <rect x="11" y="6.5" width="4" height="3" rx="0.8" />
+            <path d="M5 3.5c3 0 3 4.5 6 4.5M5 12.5c3 0 3-4.5 6-4.5" />
+          </svg>
+          <span class="wide-only">Tidy up</span>
         </button>
       </div>
       <div

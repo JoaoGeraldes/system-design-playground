@@ -114,7 +114,6 @@ const advice = createAdvice(document.querySelector<HTMLElement>('#advice')!);
 const blankBoardButton = document.querySelector<HTMLElement>('#blank-board')!;
 const tidyUpButton = document.querySelector<HTMLElement>('#tidy-up')!;
 const addGroupButton = document.querySelector<HTMLElement>('#add-group')!;
-const addGroupLabel = document.querySelector<HTMLElement>('#add-group-label')!;
 const backToNutshellButton =
   document.querySelector<HTMLElement>('#back-to-nutshell')!;
 const toast = document.querySelector<HTMLElement>('#toast')!;
@@ -286,7 +285,6 @@ function editGroupName(groupIndex: number): void {
 function setGroupMode(on: boolean): void {
   groupMode = on;
   addGroupButton.ariaPressed = String(on);
-  addGroupLabel.textContent = on ? 'Drag or tap on the board' : 'Draw a group';
   if (!on) scene.groupDraft = null;
 }
 addGroupButton.addEventListener('click', () => setGroupMode(!groupMode));

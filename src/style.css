@@ -656,14 +656,30 @@ kbd {
   cursor: pointer;
 }
 
-/* The same dashed outline groups have on the board. */
-.dashed-icon {
+.button-icon {
+  flex: none;
   width: 16px;
   height: 16px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The same dashed outline groups have on the board. */
+.dashed-icon {
   stroke-dasharray: 2.5 2;
+}
+
+/* While drawing a group, its button says how instead of what. */
+.group-hint,
+.board-button[aria-pressed='true'] .group-label {
+  display: none;
+}
+
+.board-button[aria-pressed='true'] .group-hint {
+  display: inline;
 }
 
 .board-button[aria-pressed='true'] {
@@ -677,6 +693,9 @@ kbd {
 }
 
 .blank-board {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid var(--accent-border);
@@ -1319,12 +1338,21 @@ kbd {
     right: 12px;
   }
 
-  /* Stacked, so the buttons never run into "Learn why" on the right. */
+  /*
+   * One row of icons beside the menu button, the same size as it. The row
+   * stops short of "Learn why" on the right and wraps rather than reach it.
+   */
   .board-actions {
-    top: 14px;
+    top: 12px;
     left: 62px;
-    flex-direction: column;
-    align-items: flex-start;
+    max-width: calc(100% - 62px - 112px);
+    flex-wrap: wrap;
+  }
+
+  .board-button,
+  .blank-board {
+    min-height: 40px;
+    padding: 0 11px;
   }
 
   .wide-only,
