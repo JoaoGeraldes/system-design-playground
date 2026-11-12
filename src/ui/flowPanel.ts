@@ -3,7 +3,7 @@ import {
   type FlowReport,
   type FlowStatus,
 } from '../simulation/flowCheck.ts';
-import { element, section } from './dom.ts';
+import { element, foldOnPressOutside, section } from './dom.ts';
 
 const ICONS: Record<FlowStatus, { svg: string; label: string }> = {
   error: {
@@ -49,6 +49,7 @@ export function createFlowPanel(
 ): { update(report: FlowReport): void } {
   const body = panel.querySelector<HTMLElement>('.flow-body')!;
   const headerIcon = panel.querySelector<HTMLElement>('.flow-header-icon')!;
+  foldOnPressOutside(panel);
 
   return {
     update(report) {
