@@ -85,7 +85,9 @@ type Gesture =
       fixedCorner: Point;
       moved: boolean;
     }
-  | { type: 'panning'; last: Point };
+  | { type: 'panning'; last: Point }
+  // Two fingers: `center` and `distance` are in screen pixels.
+  | { type: 'pinching'; center: Point; distance: number };
 
 const canvas = document.querySelector<HTMLCanvasElement>('#board')!;
 const ctx = canvas.getContext('2d')!;
@@ -201,6 +203,9 @@ const scene: Scene = {
   time: 0,
 };
 let gesture: Gesture = { type: 'idle' };
+// Every pointer pressed on the board, by id, in client pixels, so a
+// second finger turns the press into a pinch.
+const activePointers = new Map<number, Point>();
 let pointer: Point = { x: 0, y: 0 };
 let currentTemplate: Template | null = null;
 let currentSection: TemplateSection | null = null;
@@ -1077,6 +1082,8 @@ canvas.addEventListener('pointerdown', (event) => {
   if (event.button !== 0) return;
   canvas.setPointerCapture(event.pointerId);
   pointer = toWorld(event);
+  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (activePointers.size >= 2) return startPinch();
 
   if (groupMode) {
     scene.selection = null;
@@ -1162,6 +1169,49 @@ canvas.addEventListener('pointerdown', (event) => {
   gesture = { type: 'panning', last: { x: event.clientX, y: event.clientY } };
 });
 
+/** The midpoint and spread of the first two fingers on the board. */
+function pinchState(): { center: Point; distance: number } {
+  const [a, b] = activePointers.values();
+  return {
+    center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+  };
+}
+
+/** A second finger drops whatever the first one started and zooms. */
+function startPinch(): void {
+  cancelLongPress();
+  scene.draft = null;
+  scene.groupDraft = null;
+  scene.openWheel = null;
+  pressStart = null;
+  gesture = { type: 'pinching', ...pinchState() };
+}
+
+function movePinch(next: { center: Point; distance: number }): void {
+  if (gesture.type !== 'pinching') return;
+  const bounds = canvas.getBoundingClientRect();
+  scene.camera.x += next.center.x - gesture.center.x;
+  scene.camera.y += next.center.y - gesture.center.y;
+  scene.camera = zoomAt(
+    scene.camera,
+    { x: next.center.x - bounds.left, y: next.center.y - bounds.top },
+    next.distance / gesture.distance,
+  );
+  gesture = { type: 'pinching', ...next };
+}
+
+/**
+ * A finger lifted mid-pinch: keep pinching with the others, or let the
+ * one left pan, so the board never jumps or acts on a stray tap.
+ */
+function liftPinchFinger(): void {
+  const [rest] = activePointers.values();
+  if (activePointers.size >= 2) gesture = { type: 'pinching', ...pinchState() };
+  else if (rest) gesture = { type: 'panning', last: rest };
+  else gesture = { type: 'idle' };
+}
+
 function cancelLongPress(): void {
   if (longPress) window.clearTimeout(longPress.timer);
   longPress = null;
@@ -1180,6 +1230,13 @@ canvas.addEventListener('dblclick', (event) => {
 
 canvas.addEventListener('pointermove', (event) => {
   pointer = toWorld(event);
+  if (activePointers.has(event.pointerId)) {
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  }
+  if (gesture.type === 'pinching') {
+    if (activePointers.size >= 2) movePinch(pinchState());
+    return;
+  }
   if (longPress) {
     const moved = Math.hypot(
       event.clientX - longPress.start.x,
@@ -1244,7 +1301,9 @@ canvas.addEventListener('pointermove', (event) => {
   updateHover();
 });
 
-canvas.addEventListener('pointerup', () => {
+canvas.addEventListener('pointerup', (event) => {
+  activePointers.delete(event.pointerId);
+  if (gesture.type === 'pinching') return liftPinchFinger();
   cancelLongPress();
   if (gesture.type === 'drawing-group') finishGroup(gesture.start, pointer);
   const draft = scene.draft;
@@ -1354,6 +1413,7 @@ let pressStart: Point | null = null;
 let pressedItem: string | null = null;
 
 canvas.addEventListener('pointerdown', (event) => {
+  if (gesture.type === 'pinching') return;
   pressStart = { x: event.clientX, y: event.clientY };
   // Ports, corners and drawing select nothing to open a wheel for.
   pressedItem =
@@ -1387,6 +1447,21 @@ function selectionKey(): string | null {
 function isWheelOpen(): boolean {
   return scene.openWheel !== null && scene.openWheel === selectionKey();
 }
+
+// The browser took the touch over (or the finger left the screen's
+// reach): drop it without finishing a cable or group.
+canvas.addEventListener('pointercancel', (event) => {
+  activePointers.delete(event.pointerId);
+  if (gesture.type === 'pinching') return liftPinchFinger();
+  cancelLongPress();
+  scene.draft = null;
+  scene.groupDraft = null;
+  pressStart = null;
+  gesture = { type: 'idle' };
+});
+
+// Safari zooms the whole page on a pinch unless told not to.
+canvas.addEventListener('gesturestart', (event) => event.preventDefault());
 
 canvas.addEventListener('pointerleave', () => {
   if (gesture.type !== 'idle') return;
